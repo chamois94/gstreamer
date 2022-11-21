@@ -674,7 +674,7 @@ tsmux_program_set_pcr_stream (TsMuxProgram * program, TsMuxStream * stream)
 {
   g_return_if_fail (program != NULL);
 
-  if (program->pcr_stream == stream)
+  if (program->pcr_stream == stream || stream->is_meta == TRUE)
     return;
 
   program->pcr_pid = 0;

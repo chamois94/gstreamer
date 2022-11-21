@@ -218,6 +218,14 @@ tsmux_stream_new (guint16 pid, guint stream_type, guint stream_number)
           TSMUX_PACKET_FLAG_PES_FULL_HEADER |
           TSMUX_PACKET_FLAG_PES_DATA_ALIGNMENT;
       break;
+    case TSMUX_ST_PS_SYNC_KLV:
+      stream->id = 0xFC;
+      stream->stream_type = TSMUX_ST_METADATA;
+      stream->is_meta = TRUE;
+      stream->pi.flags |=
+          TSMUX_PACKET_FLAG_PES_FULL_HEADER |
+          TSMUX_PACKET_FLAG_PES_DATA_ALIGNMENT;
+      break;
     case TSMUX_ST_PS_OPUS:
       /* FIXME: assign sequential extended IDs? */
       stream->id = 0xBD;
@@ -910,6 +918,20 @@ tsmux_stream_default_get_es_descrs (TsMuxStream * stream,
 
       g_ptr_array_add (pmt_stream->descriptors, descriptor);
       break;
+    case TSMUX_ST_METADATA:
+      if (stream->is_meta) {
+        GstMpegtsMetadataDescriptor metadata_descriptor;
+        metadata_descriptor.application_format = 0x0100;        // General
+        metadata_descriptor.application_format_identifier = 0;  // N/A
+        metadata_descriptor.format = 0xFF;      // Identifier
+        metadata_descriptor.format_identifier = 0x4B4C5641;     // “KLVA”
+        metadata_descriptor.service_id = 0;
+
+        descriptor = gst_mpegts_descriptor_from_metadata (&metadata_descriptor);
+        GST_DEBUG ("adding KLVA metadata descriptor");
+        g_ptr_array_add (pmt_stream->descriptors, descriptor);
+      }
+      break;
     case TSMUX_ST_PS_DVB_SUBPICTURE:
       /* fallthrough ...
        * that should never happen anyway as
@@ -938,12 +960,15 @@ tsmux_stream_default_get_es_descrs (TsMuxStream * stream,
             stream->opus_channel_config, stream->opus_channel_config_len);
 
         g_ptr_array_add (pmt_stream->descriptors, descriptor);
+        break;
       }
       if (stream->is_meta) {
         descriptor = gst_mpegts_descriptor_from_registration ("KLVA", NULL, 0);
         GST_DEBUG ("adding KLVA registration descriptor");
         g_ptr_array_add (pmt_stream->descriptors, descriptor);
+        break;
       }
+      break;
     default:
       break;
   }

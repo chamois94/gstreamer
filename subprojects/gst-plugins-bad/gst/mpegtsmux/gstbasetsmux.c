@@ -85,6 +85,7 @@
 #include "gstbasetsmuxttxt.h"
 #include "gstbasetsmuxopus.h"
 #include "gstbasetsmuxjpeg2000.h"
+#include "gstbasetsmuxmetadata.h"
 
 GST_DEBUG_CATEGORY (gst_base_ts_mux_debug);
 #define GST_CAT_DEFAULT gst_base_ts_mux_debug
@@ -673,7 +674,16 @@ gst_base_ts_mux_create_or_update_stream (GstBaseTsMux * mux,
     st = TSMUX_ST_PS_OPUS;
     ts_pad->prepare_func = gst_base_ts_mux_prepare_opus;
   } else if (strcmp (mt, "meta/x-klv") == 0) {
+    gint stream_type;
+
     st = TSMUX_ST_PS_KLV;
+
+    if (gst_structure_get_int (s, "stream_type", &stream_type)) {
+      if (stream_type == TSMUX_ST_METADATA) {
+        st = TSMUX_ST_PS_SYNC_KLV;
+        ts_pad->prepare_func = gst_base_ts_mux_prepare_metadata;
+      }
+    }
   } else if (strcmp (mt, "image/x-jpc") == 0) {
     /*
      * See this document for more details on standard:
